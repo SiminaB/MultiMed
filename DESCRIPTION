@@ -1,0 +1,12 @@
+Package: MultiMed
+Title: Testing multiple biological mediators simultaneously
+Version: 0.99.2
+Date: 2013-07-07
+Author: Simina M. Boca, Joshua N. Sampson
+Depends: R (>= 3.1.0)
+Suggests: RUnit, BiocGenerics
+Maintainer: Simina M. Boca <smb310@georgetown.edu>
+Description: Implements permutation method with joint correction for
+        testing multiple mediators
+License: GPL (>= 2) + file LICENSE
+biocViews: MultipleComparison, StatisticalMethod, Software

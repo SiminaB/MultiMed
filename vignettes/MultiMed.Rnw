@@ -1,0 +1,320 @@
+% \VignetteIndexEntry{MultiMedTutorial}
+% \VignetteKeywords{Testing multiple biological mediators simultaneously}
+% \VignettePackage{MultiMed}
+\documentclass{article}
+\usepackage{alltt}
+\usepackage{amsmath}
+\usepackage[sc]{mathpazo}
+\usepackage[T1]{fontenc}
+\usepackage{geometry}
+\geometry{verbose,tmargin=2.5cm,bmargin=2.5cm,lmargin=2.5cm,rmargin=2.5cm}
+\setcounter{secnumdepth}{2}
+\setcounter{tocdepth}{2}
+\usepackage{url}
+\usepackage[unicode=true,pdfusetitle,
+ bookmarks=true,bookmarksnumbered=true,bookmarksopen=true,bookmarksopenlevel=2,
+ breaklinks=false,pdfborder={0 0 1},backref=false,colorlinks=false]
+ {hyperref}
+\hypersetup{
+ pdfstartview={XYZ null null 1}}
+
+\usepackage{breakurl}
+\usepackage[all]{xy}
+\usepackage{natbib}
+
+
+\newcommand{\Robject}[1]{{\texttt{#1}}}
+\newcommand{\Rfunction}[1]{{\texttt{#1}}}
+\newcommand{\Rpackage}[1]{{\texttt{#1}}}
+\newcommand{\Rclass}[1]{{\texttt{#1}}}
+\newcommand{\Rmethod}[1]{{\texttt{#1}}}
+\newcommand{\Rfunarg}[1]{{\texttt{#1}}}
+
+\begin{document}
+
+\title{Vignette for \Rpackage{MultiMed} package}
+\author{Simina M. Boca\\
+Innovation Center for Biomedical Informatics and \\
+Department of Oncology,
+Georgetown University Medical Center\\
+email: \texttt{smb310@georgetown.edu}, \\ \\
+Joshua N. Sampson\\
+Biostatistics Branch,
+Division of Cancer Epidemiology and Genetics,\\
+National Cancer Institute\\
+email: \texttt{joshua.sampson@nih.gov}}
+\date{\today}
+\maketitle
+
+%\SweaveOpts{concordance=TRUE}
+
+\section{Overview}
+
+The \Rpackage{MultiMed} package implements a permutation method
+which adjusts for ``multiple comparisons" when testing
+whether multiple biomarkers are mediators between a known
+risk factor and a disease. The approach is described in
+the companion paper \citep{BocaEtAl2014Bioinfo},
+``Testing multiple biological mediators simultaneously."
+This method can significantly improve the power to detect
+mediators over the standard Bonferroni correction.
+
+We first need to load the package:
+<<setup, include=TRUE>>=
+library(MultiMed)
+@
+
+\section{Performing the test of mediation}
+
+The scenarios which can be considered are shown in Figure
+\ref{fig:1-med} for the single mediator case and Figure \ref{fig:K-meds}
+(also shown in the \citep{BocaEtAl2014Bioinfo} paper)
+for the multiple mediator case. Here, we consider simulating data where the
+exposure $E$, the mediator(s) $M$ (or $M_i, i=1, \ldots, K$), and the
+outcome $Y$ are normally distributed. We denote
+by $\sigma_E^2$ the variance of $E$, by
+$\sigma_M^2$ ($\sigma_{M_i}^2$) the variance of $M$ ($M_i$) conditional on $E$,
+and by $\sigma_Y^2$ the variance of $Y$ conditional on $E$ and $M$ ($M_i$).
+
+\begin{figure}[ht]
+\caption{A scenario with a single possible mediator between exposure and
+outcome.}
+\label{fig:1-med}
+\begin{displaymath}
+\xymatrix@R=2mm{&& M \ar[ddrr]^{\displaystyle \beta} && \\
+&&&& \\
+E \ar[rrrr]^{\displaystyle  \gamma} \ar[uurr]^{\displaystyle  \alpha} &&&& Y\\
+}
+\end{displaymath}
+\end{figure}
+
+\subsection{The \Rpackage{medTest} function}
+
+The function used to perform the test of mediation is \Rfunction{medTest}.
+It has seven arguments:
+\Rfunction{E}, \Rfunction{M}, \Rfunction{Y}, \Rfunction{Z},
+\Rfunction{nperm}, \Rfunction{w}, and \Rfunction{useWeightsZ}.
+\Rfunction{E}, \Rfunction{M}, and \Rfunction{Y} represent matrices
+of size $n \times 1$, $n \times K$, and $n \times 1$, respectively,
+giving the exposure, mediator, and outcome values, where $n$ is the sample
+size and $K$ is the number of mediators. \Rfunction{E} and \Rfunction{Y}
+can also be inputted as vectors.
+The \Rfunction{Z} argument is either \Rfunction{NULL} or a numerical matrix
+having $n$ rows. If it is not \Rfunction{NULL}, then the exposure, mediators,
+and outcome will all be initially regressed on $Z$, with the residuals being
+used in the mediation analysis.
+The \Rfunction{nperm} argument gives the number of
+permutations used to estimate the null distribution,
+the default being $100$. The \Rfunction{w} argument specifies
+whether any weighting should be done for the $E$-$M$ association, as
+would be needed, for instance, in a scenario which considers a case-control
+study. The default is \Rfunction{w=1}, which means that all the
+study participants are equally weighted; \Rfunction{w} may also be given as a
+vector of length $n$, in which case it is first standardized to sum to $1$.
+The \Rfunction{useWeightsZ} argument can be \Rfunction{TRUE}, in which case
+the weights in \Rfunction{w} are used for the initial regression on $Z$, or
+\Rfunction{FALSE},
+in which case equal weights are used for this initial step.
+
+\subsection{Simulated example: Single mediator case}
+
+For a sample size of $n=100$, we can simulate a dataset with a single mediator
+in the following way:
+<<simSingMed, include=TRUE>>=
+set.seed(20183)
+
+alpha <- 0.2
+beta <- 0.2
+gamma <- 0.4
+n <- 100
+sigma2E <- 1
+sigma2M <- 1 - alpha^2
+sigma2Y <- 1 - beta^2 * (1 - alpha^2) - (alpha * beta + gamma)^2
+
+## exposure:
+E <- rnorm(n, 0, sd = sqrt(sigma2E))
+## mediator:
+M <- matrix(0, nrow = n, ncol = 1)
+M[, 1] <- rnorm(n, alpha * E, sd = sqrt(sigma2M))
+## outcome:
+Y <- rep(0, n)
+for (subj in 1:n) Y[subj] <- rnorm(1, beta * M[subj, ], sd = sqrt(sigma2Y))
+@
+
+Note that the values of $\sigma_E^2$, $\sigma_M^2$, and
+$\sigma_Y^2$ were chosen so that the marginal variances of
+$E$, $M$, and $Y$ are $1$.
+
+To perform a test of mediation, we use the \Rfunction{medTest}
+function. The output is a matrix with two columns:
+\Rfunction{S}, the test statistic used (the absolute value of the
+product of the correlations between $E$ and $M$ and between
+$r_{M|E}$ and $r_{Y|E}$, where $r_{Z_1|Z_2}$ represents the residual obtained
+from regressing $Z_1$ on $Z_2$) and \Rfunction{p}, the p-value:
+<<testSingMed, include=TRUE>>=
+medTest(E, M, Y, nperm = 500)
+@
+
+\subsection{Simulated example: Multiple mediator case}
+
+Now consider a scenario with $K=10$ mediators and a sample size of $n=100$.
+
+\begin{figure}[ht]
+\caption{A scenario with $K$ possible mediators between exposure and outcome.}
+\label{fig:K-meds}
+\begin{displaymath}
+\xymatrix@R=2mm{&& M_1 \ar[dddrr]^{\displaystyle  \beta_1} && \\
+&& M_2 \ar[ddrr]_{\displaystyle  \beta_2} && \\
+&& \vdots && \\
+E \ar[dddrr]_{\displaystyle  \alpha_K} \ar[ddrr]^{\displaystyle
+\alpha_{K-1}}\ar[rrrr]^{\displaystyle  \gamma}\ar[uurr]_{\displaystyle
+\alpha_2}
+\ar[uuurr]^{\displaystyle  \alpha_1} &&&& Y\\
+&& \vdots && \\
+&& M_{K-1} \ar[uurr]^{\displaystyle  \beta_{K-1}} && \\
+&& M_K \ar[uuurr]_{\displaystyle  \beta_K} && }
+\end{displaymath}
+\end{figure}
+
+<<simMultMed, include=TRUE>>=
+set.seed(380184)
+
+alpha <- c(rep(0, 6), rep(0.3, 2), rep(0, 2))
+beta <- c(rep(0, 6), rep(0, 2), rep(0.3, 2))
+gamma <- 0.6
+
+alpha
+beta
+
+n <- 100
+
+sigma2E <- 1
+sigma2M <- 1-alpha^2
+sigma2Y <- 1-sum(beta^2*sigma2M)-(sum(alpha*beta)+gamma)^2
+
+sigma2M
+sigma2Y
+@
+
+Note that in this case \Rfunction{alpha} and \Rfunction{beta} are
+vectors having the $i^{th}$ elements be $\alpha_i$, respectively $\beta_i$,
+where $i = 1, \ldots, 10$ indexes the mediators. Similarly,
+\Rfunction{sigma2M} is a vector, with the $i^{th}$ element being
+$\sigma_{M_i}^2$. The values of $\sigma_E^2$, $\sigma_{M_i}^2$, and
+$\sigma_Y^2$ were chosen so that the marginal variances of
+$E$, $M_i$, $Y$ are $1$.
+
+We first simulate the data:
+<<simMultMed2, include=TRUE>>=
+K <- length(alpha)
+
+## exposure:
+E <- rnorm(n, 0, sd = sqrt(sigma2E))
+## mediator:
+M <- matrix(0, nrow = n, ncol = K)
+for (i in 1:K) {
+  M[, i] <- rnorm(n, alpha[i] * E, sd = sqrt(sigma2M[i]))
+}
+## outcome:
+Y <- rep(0, n)
+for (subj in 1:n)
+  Y[subj] <- rnorm(1, sum(beta*M[subj,])+gamma*E[subj], sd=sqrt(sigma2Y))
+@
+
+We then use the \Rfunction{medTest} once again to perform the test of
+mediation.
+The output is now a matrix with 10 rows, each row giving the test statistic
+\Rfunction{S} and the p-value \Rfunction{p} for each mediator. Note that the
+p-values are already implicitly considering the multiple tests being performed,
+so no further adjustment is necessary:
+<<testMultMed, include=TRUE>>=
+medTest(E, M, Y, nperm = 500)
+@
+
+\subsection{Data analysis: Metabolites as mediators}
+
+We consider a data example from the \citep{BocaEtAl2014Bioinfo} paper, using
+the
+Navy Colorectal Adenoma case-control study \citep{SinhaEtAl1999CancerRes}, with
+daily fish intake as the exposure of interest $E$ and colorectal adenoma status
+as the outcome $Y$.
+The possible mediators are $149$ serum metabolites, whose values were
+previously batch normalized and log transformed.
+
+We first load the dataset:
+<<loadData, include=TRUE>>=
+data(NavyAdenoma)
+@
+
+The first \texttt{5} columns of the \texttt{NavyAdenoma} object represent:
+daily fish intake, BMI, gender (coded as $0$ for male, $1$ for female), age,
+and
+current smoking status (coded as $0$ for non-smoker, $1$ for current smoker):
+<<exploreData1, include=TRUE>>=
+colnames(NavyAdenoma)[1:5]
+@
+
+The next \texttt{149} columns represent the metabolite values, while the last
+column represents the case-control status:
+<<exploreData2, include=TRUE>>=
+colnames(NavyAdenoma)[c(6:9,154)]
+colnames(NavyAdenoma)[155]
+table(NavyAdenoma$Adenoma)
+@
+
+Due to the retrospective sampling, we consider weights incorporating the
+prevalence of adenoma in this age category (approximately \texttt{0.228}) and
+the fraction of cases in the dataset for the E-M associations:
+<<getWeights, include=TRUE>>=
+prev <- 0.228
+
+p <- sum(NavyAdenoma$Adenoma==1)/nrow(NavyAdenoma)
+p
+
+w <- rep(NA, nrow(NavyAdenoma))
+w[NavyAdenoma$Adenoma == 1] <- prev/p
+w[NavyAdenoma$Adenoma == 0] <- (1-prev)/(1-p)
+
+table(w)
+@
+
+We use \texttt{medTest} to perform the test of mediation, adjusting for the
+covariates BMI, gender, age, and current smoking status. As in the
+\cite{BocaEtAl2014Bioinfo} paper, we perform this adjustment using equal
+weights, rather than using the weights in \texttt{w}, but users can consider
+using the weights in \texttt{w} both here and downstream:
+<<medFish, include=TRUE>>=
+set.seed(840218)
+medsFish <- medTest(E=NavyAdenoma$Fish,
+                    M=NavyAdenoma[, 6:154],
+                    Y=NavyAdenoma$Adenoma,
+                    Z=NavyAdenoma[, 2:5],
+                    nperm=1000, w=w,
+                    useWeightsZ=FALSE)
+@
+
+Now find metabolite which has the lowest p-values:
+<<findTopMeds, include=TRUE>>=
+rownames(medsFish) <- colnames(NavyAdenoma[,-c(1:5, 154)])
+medsFish[which.min(medsFish[,"p"]),,drop=FALSE]
+@
+
+Thus, we conclude that DHA (fish oil) is a possible mediator of the association
+between fish intake and colorectal adenoma.
+
+\bibliographystyle{abbrvnat}
+\bibliography{MultiMed}
+
+\end{document}
+
+
+
+
+
+
+
+
+
+
+
+
