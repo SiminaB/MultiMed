@@ -1,6 +1,6 @@
 Package: MultiMed
 Title: Testing multiple biological mediators simultaneously
-Version: 0.99.2
+Version: 1.0.0
 Date: 2013-07-07
 Author: Simina M. Boca, Joshua N. Sampson
 Depends: R (>= 3.1.0)
