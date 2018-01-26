@@ -11,8 +11,6 @@ mat.vec    <- function(the.vec,nr)
     matrix(the.vec,byrow=TRUE,ncol=length(the.vec),nrow=nr)
 }
 
-mat.vec(1:4, 4)
-
 ###center a vector
 col.center <- function(the.mat) {
     n <- nrow(the.mat); c <- ncol(the.mat);
@@ -37,6 +35,91 @@ col.sd     <- function(the.mat)
 col.norm   <- function(the.mat) col.center(the.mat)/mat.vec(col.sd(the.mat),
                                                             nr=nrow(the.mat))
 
+##Bonferroni approach for medTest.SBMH
+proc.intersection.adaptivebonf = function(pv1,pv2, t1=0.025, t2=0.025, lambda=0){
+  if (lambda>0){
+    t1 = min(t1,lambda)
+    t2= min(t2,lambda)
+  }
+  
+  selected =which((pv1<=t1) & (pv2<=t2))
+  R1 = sum(pv1<=t1)
+  R2 = sum(pv2<=t2)
+  
+  if(length(selected)==0){
+    return(list(r.value = rep(NA,length(pv1)), R1=R1, R2=R2,  selected = selected))
+  }
+  
+  S1 = (pv1<=t1) #the selected from study 1
+  pi2 = (1+sum(pv2[S1]>lambda))/(R1*(1-lambda)) #the fraction of nulls in study 2 among S1
+  
+  S2 = (pv2<=t2) #the selected from study 2
+  pi1 = (1+sum(pv1[S2]>lambda))/(R2*(1-lambda)) #the fraction of nulls in study 1 among S2
+  
+  if (lambda==0){ #ie nonadaptive
+    pi2=1
+    pi1=1
+  }
+  
+  if((pi1 > 1) | (pi2 > 1))
+  {
+    warning("At least one of the estimated fraction of nulls is > 1: Using lambda=0 to set them to 1.")
+    pi2=1
+    pi1=1
+  }
+  
+  r.value = rep(NA,length(pv1))
+  r.value[selected] = pmax(pi1*R2*pv1[selected]/0.5, pi2*R1*pv2[selected]/0.5)
+  
+  return(list(r.value = r.value, R1=R1, R2=R2,selected = selected,pi1=pi1, pi2=pi2))
+}
+
+##FDR approach for medTest.SBMH
+proc.intersection.adaptiveFDR = function(pv1,pv2, t1=0.025, t2=0.025,lambda=0.0){
+  #if adaptive=TRUE, estimates the fraction of zeros of study i in selection j, for (i,j) = (1,2) or (2,1)
+  #incorporate it into procedure by multiplying the p-value of study i by this fraction.   
+  #print(c(t1,t2))
+  #print(summary(pv1))
+  #print(summary(pv2))
+  #print(lambda)
+  if (lambda>0){
+    t1 = min(t1,lambda)
+    t2= min(t2,lambda)
+  }
+  selected =which((pv1<=t1) & (pv2<=t2))
+  R1 = sum(pv1<=t1)
+  R2 = sum(pv2<=t2)
+  if(length(selected)==0){
+    return(list(r.value = rep(NA,length(pv1)), R1=R1, R2=R2, selected = selected))
+  }
+  
+  S1 = (pv1<=t1) #the selected from study 1
+  pi2 = (1+sum(pv2[S1]>lambda))/(R1*(1-lambda)) #the fraction of nulls in study 2 among S1
+  
+  S2 = (pv2<=t2) #the selected from study 2
+  pi1 = (1+sum(pv1[S2]>lambda))/(R2*(1-lambda)) #the fraction of nulls in study 1 among S2
+  
+  if (lambda==0){ #ie nonadaptive
+    pi2=1
+    pi1=1
+  }
+  
+  if((pi1 > 1) | (pi2 > 1))
+  {
+    warning("At least one of the estimated fraction of nulls is > 1: Using lambda=0 to set them to 1.")
+    pi2=1
+    pi1=1
+  }
+  
+  Z.selected <- pmax(pi1*R2*pv1/0.5, pi2*R1*pv2/0.5)[selected]
+  oz <- order(Z.selected, decreasing =TRUE)
+  ozr <- order(oz)
+  r.value.selected <- cummin( (Z.selected/rank(Z.selected, ties.method= "max"))[oz] )[ozr]
+  r.value.selected <- pmin(r.value.selected,1)
+  r.value  = rep(NA,length(pv1))
+  r.value[selected] = r.value.selected
+  return(list(r.value = r.value, R1=R1, R2=R2, selected = selected, pi1=pi1, pi2=pi2))
+}
 
 #############################################################################
 ###
@@ -214,3 +297,27 @@ medTest <- function(E,M,Y,Z=NULL,useWeightsZ=TRUE,nperm=100,w=1){
 
 }
 
+#############################################################################
+###
+###  medTest.SBMH (Mediator Test based on Bogomolov & Heller)
+###
+#############################################################################
+
+###INPUT: 
+###pEM:     a vector of size m (where m = number of mediators). Entries are the p-values for the E,M_j relationship 
+###pMY:     a vector of size m (where m = number of mediators). Entries are the p-values for the M_j,Y|E relationship
+###MCP.type:    multiple comparison procedure - either "FWER" or "FDR"
+###t1:   threshold for determining the cutoff to be one of the top S_1 E/M_j relationships 
+###t2:   threshold for determining the cutoff to be one of the top S_2 M_j/Y relationships 
+###adaptive:  FALSE/TRUE depending on whether an adaptive threshold should be used
+###
+###OUTPUT:
+###m x 1 matrix - either p-values (if MCP.type = "FWER") or q-values (if MCP.type = "FDR")
+
+medTest.SBMH <- function(pEM,pMY,MCP.type="FWER",t1=0.05,t2=0.05,lambda=0){
+  if (MCP.type=="FWER")  possVal <- proc.intersection.adaptivebonf(pEM,pMY, t1=t1, t2=t2,lambda=lambda)$r.value
+  if (MCP.type=="FDR")   possVal <- proc.intersection.adaptiveFDR( pEM,pMY, t1=t1, t2=t2,lambda=lambda)$r.value
+  possVal <- ifelse(is.na(possVal),1,possVal)
+  ##threshold values at 1
+  ifelse(possVal > 1, 1, possVal)
+}

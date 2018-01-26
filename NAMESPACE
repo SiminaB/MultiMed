@@ -1,1 +1,1 @@
-export(medTest)
+export(medTest, medTest.SBMH)
