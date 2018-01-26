@@ -14,5 +14,5 @@ You can also install MultiMed from GitHub using the devtools package:
 
 ``` r
 # install.packages("devtools")
-devtools::install_github("SiminaB/MultiMed-devel")
+devtools::install_github("SiminaB/MultiMed")
 ```
