@@ -37,6 +37,9 @@ medTest.SBMH(pEM,pMY,MCP.type="FWER",t1=0.05,t2=0.05,lambda=0)
   m x 1 matrix of either p-values (if MCP.type = "FWER") or q-values (if MCP.type = "FDR").
 }
 \references{
+  Sampson JN, Boca SM, Moore SC, Heller R. (2018) 
+  FWER and FDR control when testing multiple mediators
+  \emph{Bioinformatics}, 34(14), 2418-2424.
 }
 \author{
   Ruth Heller, Joshua N. Sampson
