@@ -57,9 +57,9 @@ medTest(E, M, Y, Z = NULL, useWeightsZ = TRUE, nperm = 100, w = 1)
   that the mediator is statistically significant.
 }
 \references{
-  Boca SM, Sinha R, Cross AJ, Moore SC, Sampson JN. (2014) 
+  Boca SM, Sinha R, Cross AJ, Moore SC, Sampson JN. 
   Testing multiple biological mediators simultaneously.
-  \emph{Bioinformatics}, 30(2), 214-220.
+  \emph{Bioinformatics}, 2014, 30(2), 214-220.
 }
 \author{
   Simina M. Boca, Joshua N. Sampson

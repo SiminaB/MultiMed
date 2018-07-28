@@ -26,13 +26,13 @@
 
 \references{
   Sinha, R, Chow WH, Kulldorff M, Denobile J, Butler J, Garcia-Closas M,
-  Weil R, Hoover RN, Rothman N. (1999) Well-done, grilled red meat
-  increases the risk of colorectal adenomas. \emph{Cancer Res.}, 59(17),
+  Weil R, Hoover RN, Rothman N. Well-done, grilled red meat
+  increases the risk of colorectal adenomas. \emph{Cancer Res.}, 1999, 59(17),
   4320-4324.
   
-  Boca SM, Sinha R, Cross AJ, Moore SC, Sampson JN. (2014) 
+  Boca SM, Sinha R, Cross AJ, Moore SC, Sampson JN. 
   Testing multiple biological mediators simultaneously.
-  \emph{Bioinformatics}, 30(2), 214-220.
+  \emph{Bioinformatics}, 2014, 30(2), 214-220.
 }
 \seealso{
   \code{medTest}
